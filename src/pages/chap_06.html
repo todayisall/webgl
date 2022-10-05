@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="../css/common.css" />
+    <title>webgl 立方体</title>
+    <script src="../utils/webgl-helper.js"></script>
+    <script src="../utils/matrix.js"></script>
+  </head>
+  <body>
+    <canvas class="canvas"></canvas>
+    <script type="shader-source" id="vertexShader">
+      precision mediump float;
+      attribute vec3 a_Position;
+      attribute vec4 a_Color;
+      varying vec4 v_Color;
+      uniform mat4 u_Matrix;
+       void main(){
+      	gl_Position = u_Matrix * vec4(a_Position, 1);
+        v_Color = a_Color;
+       }
+    </script>
+    <script type="shader-source" id="fragmentShader">
+      precision mediump float;
+      varying vec4 v_Color;
+      void main(){
+        vec4 color = v_Color;
+        gl_FragColor = color;
+      }
+    </script>
+    <script>
+      let canvas = document.querySelector(".canvas");
+      let gl = canvas.getContext("webgl");
+
+      // 创建顶点着色器
+      let vertexShader = createShaderFromScript(
+        gl,
+        "vertexShader",
+        gl.VERTEX_SHADER
+      );
+
+      // 创建片源着色器
+      let fragmentShader = createShaderFromScript(
+        gl,
+        "fragmentShader",
+        gl.FRAGMENT_SHADER
+      );
+
+      // 创建着色器程序
+      let program = createSimpleProgram(gl, vertexShader, fragmentShader);
+
+      // 使用着色器程序
+      gl.useProgram(program);
+
+      // 获取顶点着色器中的变量
+      let u_Matrix = gl.getUniformLocation(program, 'u_Matrix');
+      let a_Position = gl.getAttribLocation(program, "a_Position");
+      let a_Screen_Size = gl.getAttribLocation(program, "a_Screen_Size");
+      gl.vertexAttrib2f(a_Screen_Size, canvas.clientWidth, canvas.clientHeight);
+
+      const a_Color = gl.getAttribLocation(program, "a_Color");
+
+      let positions = [
+            -0.5, -0.5, 0.5, 1, 0, 0, 1,
+            0.5, -0.5, 0.5, 1, 0, 0, 1,
+            0.5, 0.5, 0.5, 1, 0, 0, 1,
+            -0.5, 0.5, 0.5, 1, 0, 0, 1,
+            
+            -0.5, 0.5, 0.5, 0, 1, 0, 1,
+            -0.5, 0.5, -0.5, 0, 1, 0, 1,
+            -0.5, -0.5, -0.5, 0, 1, 0, 1,
+            -0.5, -0.5, 0.5, 0, 1, 0, 1,
+
+            0.5, 0.5, 0.5, 0, 0, 1, 1,
+            0.5, -0.5, 0.5, 0, 0, 1, 1,
+            0.5, -0.5, -0.5, 0, 0, 1, 1,
+            0.5, 0.5, -0.5, 0, 0, 1, 1,
+
+            0.5, 0.5, -0.5, 1, 0, 1, 1,
+            0.5, -0.5, -0.5, 1, 0, 1, 1,
+            -0.5, -0.5, -0.5, 1, 0, 1, 1,
+            -0.5, 0.5, -0.5, 1, 0, 1, 1,
+
+            -0.5, 0.5, 0.5, 1, 1, 0, 1,
+            0.5, 0.5, 0.5, 1, 1, 0, 1,
+            0.5, 0.5, -0.5, 1, 1, 0, 1,
+            -0.5, 0.5, -0.5, 1, 1, 0, 1,
+
+            -0.5, -0.5, 0.5, 0, 1, 1, 1,
+            -0.5, -0.5, -0.5, 0, 1, 1, 1,
+            0.5, -0.5, -0.5, 0, 1, 1, 1,
+            0.5, -0.5, 0.5, 0, 1, 1, 1,
+        ]
+
+        let indices = [0, 1, 2, 0, 2, 3, 4, 5, 6, 4, 6, 7, 8, 9, 10, 8, 10, 11, 12, 13, 14, 12, 14, 15, 16, 17, 18, 16,
+            18, 19, 20, 21, 22, 20, 22, 23
+        ]
+
+      gl.enableVertexAttribArray(a_Position);
+      gl.enableVertexAttribArray(a_Color);
+      // 创建缓冲区
+        let buffer = gl.createBuffer();
+        // 绑定缓冲区为当前缓冲
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+        // 设置 a_Position 属性从缓冲区读取数据方式
+        gl.vertexAttribPointer(a_Position, 3, gl.FLOAT, false, 28, 0);
+        // 设置 a_Color 属性从缓冲区读取数据方式
+        gl.vertexAttribPointer(a_Color, 4, gl.FLOAT, false, 28, 12);
+        // 向缓冲区传递数据
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
+
+        //创建索引缓冲区
+        let indicesBuffer = gl.createBuffer();
+      // 设置索引数据
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indicesBuffer);
+      gl.bufferData(
+        gl.ELEMENT_ARRAY_BUFFER,
+        new Uint16Array(indices),
+        gl.STATIC_DRAW
+      );
+
+       //设置清屏颜色为黑色。
+       gl.clearColor(0, 0, 0, 1);
+      //隐藏背面
+      gl.enable(gl.CULL_FACE);
+
+      let initMatrix = matrix.identity();
+      let currentMatrix = null;
+      let xAngle = 0;
+      let yAngle = 0;
+      let deg = Math.PI / 180;
+      let timer = null
+      function animate(e) {
+        if (timer) {
+          clearInterval(timer);
+          timer = null;
+        } else {
+          timer = setInterval(() => {
+            xAngle += 1;
+            yAngle += 1;
+            
+            currentMatrix = matrix.rotationX(deg * xAngle);
+            currentMatrix = matrix.rotateY(currentMatrix, deg * yAngle);
+            gl.uniformMatrix4fv(u_Matrix, false, currentMatrix);
+            renderUI(gl);
+          }, 50);
+        }
+      }
+
+      animate();
+      function renderUI(gl) {
+        // 用上一步设置的清空画布颜色清空画布。
+        gl.clear(gl.COLOR_BUFFER_BIT);
+     
+        const primitiveType = gl.TRIANGLES;
+        gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_SHORT, 0);
+         
+      }
+    </script>
+  </body>
+</html>
